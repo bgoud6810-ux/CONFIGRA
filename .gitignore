@@ -1,0 +1,75 @@
+# ============================================================
+# CONFIGRA .gitignore
+# ============================================================
+
+# ---- Secrets and local configuration ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+credentials.json
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# ---- Virtual environments ----
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ---- Test / lint caches ----
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# ---- Logs, temp and editor backups ----
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.swp
+*~
+scratch/
+
+# ---- Local databases ----
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ---- Generated scan artifacts (may contain target data) ----
+output/
+
+# ---- Downloaded binaries (cloudflared tunnel) ----
+tools/
+
+# ---- Editors / operating system ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

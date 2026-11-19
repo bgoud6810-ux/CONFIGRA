@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}CONFIGRA | Automated Security Misconfiguration Detector{% endblock %}
+
+{% block extra_head %}
+  {% if api_key %}<meta name="configra-api-key" content="{{ api_key }}">{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="scanner-hero-section">
+
+  <!-- =========================================================
+       MAIN TARGET INPUT PANEL
+       ========================================================= -->
+  <section class="cyber-card scanner-main-panel" aria-label="Target Configuration">
+    <div class="scanner-header-copy">
+      <div class="scanner-brand-lockup">
+        <svg class="configra-mark hero-mark" viewBox="0 0 48 52" role="img" aria-label="CONFIGRA shield and server logo">
+          <path class="logo-shield" d="M24 3 6 10v13c0 12 7.4 21.3 18 26 10.6-4.7 18-14 18-26V10L24 3Z"/>
+          <rect class="logo-server" x="15" y="15" width="18" height="22" rx="2"/>
+          <path class="logo-server-line" d="M18 21h12M18 27h12M18 33h7"/>
+          <circle class="logo-signal" cx="29" cy="33" r="1.5"/>
+        </svg>
+        <div>
+          <span class="hero-wordmark">CONFIGRA</span>
+          <h1 class="scanner-headline">Automated Security Misconfiguration Detector</h1>
+          <p class="scanner-tagline">Detect. Analyze. Strengthen.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Authorized Testing Notice -->
+    <div class="authorized-warning-banner" role="alert">
+      <svg class="warning-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      <div>
+        <strong>Safe, non-destructive scanning only.</strong>
+        <span id="scanModeNotice">
+          <strong>Mode A &mdash; Passive Public Inspection:</strong> minimal, non-intrusive, publicly observable checks only (no sensitive-path enumeration, no TRACE/method/CORS probing, no exploitation or bypass). Not a complete security audit.
+          <strong>Mode B &mdash; Authorized Security Configuration Assessment:</strong> existing safe checks for explicitly authorized targets; public/non-private targets require authorization confirmation.
+        </span>
+      </div>
+    </div>
+
+    <!-- Target Form -->
+    <form id="scanForm" onsubmit="handleStartScan(event)">
+      <!-- URL Input Box -->
+      <div class="url-input-container">
+        <span class="input-icon-prefix">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+        </span>
+        <input type="text" 
+               id="targetUrl" 
+               class="url-input-field" 
+               placeholder="Enter target URL (e.g. http://localhost:3000 or http://localhost:8000)" 
+               required
+               autocomplete="off"
+               spellcheck="false">
+        <button type="submit" id="startScanBtn" class="btn-cyber-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Start Scan</span>
+        </button>
+      </div>
+
+      <!-- Quick Target Presets -->
+      <div class="presets-row">
+        <span class="preset-label">Quick Presets:</span>
+        <button type="button" class="preset-pill" onclick="setPreset('http://localhost:3000')">
+          OWASP Juice Shop (3000)
+        </button>
+        <button type="button" class="preset-pill" onclick="setPreset('http://localhost:8000')">
+          Local Test Server (8000)
+        </button>
+        <button type="button" class="preset-pill" onclick="setPreset('http://127.0.0.1:8000')">
+          127.0.0.1:8000
+        </button>
+      </div>
+
+      <!-- Advanced Scan Configurations Accordion -->
+      <div class="config-options-panel">
+        <div class="config-toggle-header" onclick="toggleConfigPanel()">
+          <span style="display:flex; align-items:center; gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="21" x2="4" y2="14"></line>
+              <line x1="4" y1="10" x2="4" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12" y2="3"></line>
+              <line x1="20" y1="21" x2="20" y2="16"></line>
+              <line x1="20" y1="12" x2="20" y2="3"></line>
+              <line x1="1" y1="14" x2="7" y2="14"></line>
+              <line x1="9" y1="8" x2="15" y2="8"></line>
+              <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+            Scan Configuration &amp; Safety Controls
+          </span>
+          <span id="configToggleIcon">&#x25BC;</span>
+        </div>
+
+        <div id="configGrid" class="config-grid" style="display: none;">
+          <!-- Scan Mode -->
+          <div class="config-field" style="grid-column: 1 / -1;">
+            <label class="config-label" for="cfgScanMode">Scan Mode</label>
+            <select id="cfgScanMode" class="config-input" aria-describedby="scanModeHelp">
+              <option value="passive_public" selected>Mode A: Passive Public Inspection (minimal, publicly observable, non-intrusive)</option>
+              <option value="authorized_assessment">Mode B: Authorized Security Configuration Assessment (explicit authorization required for public targets)</option>
+            </select>
+            <div id="scanModeHelp" class="config-label" style="margin-top:6px; font-weight:400; line-height:1.4;">
+              Mode A performs low-impact observation only and is not a complete security audit. Mode B preserves existing safe checks for targets you are explicitly authorized to assess.
+            </div>
+          </div>
+
+          <!-- Request Delay -->
+          <div class="config-field">
+            <label class="config-label" for="cfgDelay">Polite Request Delay (s)</label>
+            <input type="number" id="cfgDelay" class="config-input" value="0.5" step="0.1" min="0" max="5">
+          </div>
+
+          <!-- Request Timeout -->
+          <div class="config-field">
+            <label class="config-label" for="cfgTimeout">Request Timeout (s)</label>
+            <input type="number" id="cfgTimeout" class="config-input" value="10.0" step="1" min="1" max="60">
+          </div>
+
+          <!-- Insecure SSL Flag -->
+          <div class="config-field" style="justify-content: flex-end;">
+            <label class="checkbox-wrap">
+              <input type="checkbox" id="cfgInsecure" class="cyber-checkbox">
+              <span>Allow insecure TLS verification (lab/self-signed only; disables certificate verification)</span>
+            </label>
+          </div>
+
+          <!-- Authorization/Confirmation -->
+          <div class="config-field" style="justify-content: flex-end;">
+            <label class="checkbox-wrap">
+              <input type="checkbox" id="cfgPermission" class="cyber-checkbox">
+              <span id="cfgPermissionLabel">I confirm this target is appropriate for inspection and I am authorized where required</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Error Banner -->
+    <div id="scanErrorAlert" class="scan-error-alert" role="alert" {% if initial_error %}style="display:block;"{% endif %}>
+      <strong>Scan Execution Failed:</strong>
+      <span id="scanErrorMsg">{{ initial_error or "Target is unreachable or failed to respond." }}</span>
+    </div>
+
+    <!-- =========================================================
+         LIVE SCANNING ANIMATION PANEL (Appears after clicking Start)
+         ========================================================= -->
+    <div id="scanningLivePanel" class="scanning-live-panel" aria-live="polite" {% if active_scan_id %}style="display:block;"{% endif %}>
+      <div class="scan-progress-header">
+        <div class="scan-status-text">
+          <div class="scan-radar-spinner"></div>
+          <span id="scanStatusTitle">{% if active_scan_id %}Resuming active scan...{% else %}Initializing scan context...{% endif %}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="scan-pct-num" id="scanPctNum">10%</div>
+          <button type="button" id="cancelScanBtn" class="preset-pill" style="display:none; border-color: var(--sev-critical); color: var(--sev-critical);" onclick="cancelActiveScan()">Cancel Scan</button>
+        </div>
+      </div>
+
+      <!-- Glowing Neon Progress Track -->
+      <div class="cyber-progress-track">
+        <div id="cyberProgressBar" class="cyber-progress-bar" style="width: 10%;"></div>
+      </div>
+
+      <!-- Live Terminal Output Stream -->
+      <div class="scan-terminal-log" id="scanTerminalLog">
+        <div>[SYSTEM] Dispatching probe sequence...</div>
+        <div>[READY] Target queue established.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature-icon-grid" aria-label="Scanner capabilities">
+    <div class="feature-icon-item" title="Security headers and CSP" aria-label="Security headers and CSP">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
+    </div>
+    <div class="feature-icon-item" title="Cookie security flags" aria-label="Cookie security flags">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3a3 3 0 0 0 4 4 3 3 0 0 0 4 4 9 9 0 1 1-8-8Z"/>
+        <path d="M8 13h.01M12 17h.01M7 9h.01"/>
+      </svg>
+    </div>
+    <div class="feature-icon-item" title="CORS and HTTP methods" aria-label="CORS and HTTP methods">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>
+      </svg>
+    </div>
+    <div class="feature-icon-item" title="Sensitive paths and server information" aria-label="Sensitive paths and server information">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9h18M8 6h.01M5.5 6h.01M7 13h10M7 17h6"/>
+      </svg>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.__ACTIVE_SCAN_ID__ = {{ active_scan_id|tojson if active_scan_id else "null" }};
+  window.__ACTIVE_TARGET_URL__ = {{ active_target_url|tojson if active_target_url else "null" }};
+</script>
+<script src="{{ url_for('static', filename='js/cyber_scanner.js') }}"></script>
+{% endblock %}

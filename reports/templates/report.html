@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Misconfiguration Report - {{ target_url }}</title>
+  <style>
+    /* -------------------------------------------------------------
+       CSS Custom Properties & Color Palette
+       ------------------------------------------------------------- */
+    :root {
+      --bg: #02060d;
+      --panel: #060d1a;
+      --line: #12304f;
+      --text: #e6edf3;
+      --muted: #8aa0bd;
+      --cyan: #19d3ff;
+      --blue: #1e90ff;
+      --red: #ff2d3d;
+      --orange: #ff7a1a;
+      --yellow: #ffc21a;
+      --low: #12b5ff;
+      --info: #8b949e;
+      --green: #22ff66;
+
+      /* Dark tinted backgrounds for severities */
+      --bg-critical: #2a0710;
+      --bg-high: #2a1205;
+      --bg-medium: #2a1f05;
+      --bg-low: #051a2e;
+      --bg-info: #121720;
+
+      /* Typography */
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --font-body: Inter, 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* -------------------------------------------------------------
+       Global Resets & Layout
+       ------------------------------------------------------------- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.5;
+      padding: 32px 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .report-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* -------------------------------------------------------------
+       1. Header Line (No Box)
+       ------------------------------------------------------------- */
+    .header-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 28px;
+      font-family: var(--font-mono);
+    }
+
+    .header-left {
+      font-size: 1.25rem;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .header-prompt {
+      color: var(--green);
+      margin-right: 6px;
+    }
+
+    .header-url {
+      color: var(--cyan);
+    }
+
+    .header-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--cyan);
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .calendar-icon {
+      stroke: var(--cyan);
+      vertical-align: middle;
+    }
+
+    /* -------------------------------------------------------------
+       2. Hero Row (Circuit Board Art + Padlock + Divider + Ring + Score)
+       ------------------------------------------------------------- */
+    .hero-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px 32px;
+      margin-bottom: 28px;
+      overflow: hidden;
+      min-height: 140px;
+    }
+
+    .circuit-art {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .circuit-left {
+      left: 12px;
+    }
+
+    .circuit-right {
+      right: 12px;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* Padlock with Glow */
+    .hero-padlock-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-padlock {
+      display: block;
+      transition: filter 0.3s ease;
+    }
+
+    .padlock-green {
+      color: var(--green);
+      filter: drop-shadow(0 0 10px rgba(34, 255, 102, 0.7));
+    }
+
+    .padlock-orange {
+      color: var(--orange);
+      filter: drop-shadow(0 0 10px rgba(255, 122, 26, 0.7));
+    }
+
+    .padlock-red {
+      color: var(--red);
+      filter: drop-shadow(0 0 10px rgba(255, 45, 61, 0.7));
+    }
+
+    /* Optional slow pulse on red open padlock */
+    @media (prefers-reduced-motion: no-preference) {
+      .padlock-pulse-red {
+        animation: slow-pulse 2.8s infinite ease-in-out;
+      }
+    }
+
+    @keyframes slow-pulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(255, 45, 61, 0.6));
+        transform: scale(1);
+      }
+      50% {
+        filter: drop-shadow(0 0 18px rgba(255, 45, 61, 0.95));
+        transform: scale(1.04);
+      }
+    }
+
+    /* Divider */
+    .hero-divider {
+      width: 1px;
+      height: 80px;
+      background: var(--cyan);
+      opacity: 0.45;
+    }
+
+    /* Grade Ring (SVG) with Glow */
+    .grade-ring-wrapper {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .grade-ring-svg {
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 8px {{ grade_color }});
+    }
+
+    .grade-ring-track {
+      stroke: var(--line);
+      stroke-width: 8;
+      fill: none;
+    }
+
+    .grade-ring-arc {
+      stroke: {{ grade_color }};
+      stroke-width: 8;
+      stroke-linecap: round;
+      fill: none;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+
+    .grade-ring-letter {
+      position: absolute;
+      font-family: var(--font-mono);
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: {{ grade_color }};
+      text-shadow: 0 0 10px {{ grade_color }};
+      line-height: 1;
+      user-select: none;
+    }
+
+    /* Score and Findings Hero Text */
+    .hero-score-meta {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .hero-score-line {
+      font-family: var(--font-mono);
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .hero-score-num {
+      color: {{ grade_color }};
+    }
+
+    .hero-score-denom {
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 2.2rem;
+    }
+
+    .hero-findings-subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* -------------------------------------------------------------
+       Comparison Panel Styles
+       ------------------------------------------------------------- */
+    .comparison-panel {
+      background: var(--panel);
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 12px rgba(25, 211, 255, 0.2);
+      border-radius: 8px;
+      padding: 18px 24px;
+      margin-bottom: 28px;
+    }
+
+    .comparison-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+
+    .comparison-title {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+
+    .comparison-score-delta {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .delta-pos { color: var(--green); font-weight: 700; }
+    .delta-neg { color: var(--red); font-weight: 700; }
+
+    .comparison-stats-row {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .comp-stat-badge {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .comp-fixed { background: rgba(34, 255, 102, 0.15); border: 1px solid var(--green); color: var(--green); }
+    .comp-open { background: rgba(255, 194, 26, 0.15); border: 1px solid var(--yellow); color: var(--yellow); }
+    .comp-new { background: rgba(255, 45, 61, 0.15); border: 1px solid var(--red); color: var(--red); }
+
+    .comparison-fixed-list {
+      margin-top: 10px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .fixed-item {
+      color: var(--green);
+      font-family: var(--font-mono);
+      margin-right: 6px;
+    }
+
+    /* -------------------------------------------------------------
+       3. Four Severity Tiles Row (Critical, High, Medium, Low)
+       ------------------------------------------------------------- */
+    .severity-tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 34px;
+    }
+
+    .severity-tile {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: transform 0.2s ease;
+    }
+
+    .severity-tile-critical {
+      background: var(--bg-critical);
+      border-color: var(--red);
+      box-shadow: 0 0 12px rgba(255, 45, 61, 0.35);
+      color: var(--red);
+    }
+
+    .severity-tile-high {
+      background: var(--bg-high);
+      border-color: var(--orange);
+      box-shadow: 0 0 12px rgba(255, 122, 26, 0.35);
+      color: var(--orange);
+    }
+
+    .severity-tile-medium {
+      background: var(--bg-medium);
+      border-color: var(--yellow);
+      box-shadow: 0 0 12px rgba(255, 194, 26, 0.35);
+      color: var(--yellow);
+    }
+
+    .severity-tile-low {
+      background: var(--bg-low);
+      border-color: var(--low);
+      box-shadow: 0 0 12px rgba(18, 181, 255, 0.35);
+      color: var(--low);
+    }
+
+    .severity-tile-info {
+      background: var(--bg-info);
+      border-color: var(--info);
+      box-shadow: 0 0 12px rgba(139, 148, 158, 0.35);
+      color: var(--info);
+    }
+
+    .tile-left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tile-number {
+      font-family: var(--font-mono);
+      font-size: 2.3rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .tile-word {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .tile-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tile-icon {
+      stroke: currentColor;
+    }
+
+    /* -------------------------------------------------------------
+       4. Section Headings
+       ------------------------------------------------------------- */
+    .section-heading {
+      display: flex;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      border-left: 3px solid var(--blue);
+      padding-left: 12px;
+      color: var(--text);
+    }
+
+    .section-heading-cyan {
+      border-left-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* -------------------------------------------------------------
+       Findings List & Finding Rows
+       ------------------------------------------------------------- */
+    .findings-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 36px;
+    }
+
+    .finding-row {
+      display: flex;
+      align-items: stretch;
+      gap: 16px;
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      padding: 16px 18px;
+    }
+
+    /* Severity Tinted Backgrounds and Borders */
+    .finding-critical {
+      background: var(--bg-critical);
+      border-color: var(--red);
+      box-shadow: 0 0 14px rgba(255, 45, 61, 0.28);
+    }
+
+    .finding-high {
+      background: var(--bg-high);
+      border-color: var(--orange);
+      box-shadow: 0 0 14px rgba(255, 122, 26, 0.28);
+    }
+
+    .finding-medium {
+      background: var(--bg-medium);
+      border-color: var(--yellow);
+    }
+
+    .finding-low {
+      background: var(--bg-low);
+      border-color: var(--low);
+    }
+
+    .finding-info {
+      background: var(--bg-info);
+      border-color: var(--info);
+    }
+
+    /* Finding Left Icon */
+    .finding-icon-wrap {
+      display: flex;
+      align-items: flex-start;
+      padding-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .finding-icon-critical { stroke: var(--red); }
+    .finding-icon-high { stroke: var(--orange); }
+    .finding-icon-medium { stroke: var(--yellow); }
+    .finding-icon-low { stroke: var(--low); }
+    .finding-icon-info { stroke: var(--info); }
+
+    /* Severity and Confidence Badges */
+    .badges-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-start;
+      flex-shrink: 0;
+    }
+
+    .severity-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      color: #02060d;
+      white-space: nowrap;
+    }
+
+    .badge-critical {
+      background: var(--red);
+      box-shadow: 0 0 8px rgba(255, 45, 61, 0.6);
+    }
+
+    .badge-high {
+      background: var(--orange);
+      box-shadow: 0 0 8px rgba(255, 122, 26, 0.6);
+    }
+
+    .badge-medium {
+      background: var(--yellow);
+      box-shadow: 0 0 8px rgba(255, 194, 26, 0.6);
+    }
+
+    .badge-low {
+      background: var(--low);
+      box-shadow: 0 0 8px rgba(18, 181, 255, 0.6);
+    }
+
+    .badge-info {
+      background: var(--info);
+      box-shadow: 0 0 8px rgba(139, 148, 158, 0.6);
+    }
+
+    /* Confidence Badge (Outlined tag) */
+    .confidence-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--muted);
+      background: transparent;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    .confidence-confirmed {
+      border-color: rgba(25, 211, 255, 0.5);
+      color: var(--cyan);
+    }
+
+    .confidence-likely {
+      border-color: rgba(138, 160, 189, 0.4);
+      color: var(--muted);
+    }
+
+    /* Finding Main Info */
+    .finding-main-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .finding-title-line {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .category-divider {
+      color: var(--line);
+      margin: 0 6px;
+      font-weight: normal;
+    }
+
+    .finding-category {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: lowercase;
+    }
+
+    .finding-evidence {
+      font-size: 0.9rem;
+      color: #c9d7e6;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .evidence-label {
+      font-weight: 600;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .finding-url-line {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      margin-top: 2px;
+    }
+
+    .url-prefix {
+      color: #556b82;
+      margin-right: 4px;
+    }
+
+    /* Fix Box (on right, ~34% width) */
+    .finding-fix-box {
+      width: 34%;
+      max-width: 34%;
+      flex-shrink: 0;
+      background: #02070e;
+      border: 1px solid var(--green);
+      border-radius: 4px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .fix-padlock-icon {
+      color: var(--green);
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .fix-text {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--green);
+      line-height: 1.4;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .fix-prefix {
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    /* Empty Findings State */
+    .no-findings-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: var(--panel);
+      border: 1px solid var(--green);
+      border-radius: 6px;
+      padding: 36px 20px;
+      margin-bottom: 36px;
+      color: var(--green);
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    /* -------------------------------------------------------------
+       5. Passed Checks Section (3 Columns)
+       ------------------------------------------------------------- */
+    .passed-checks-section {
+      margin-bottom: 36px;
+    }
+
+    .passed-checks-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .passed-check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px 14px;
+      color: #ffffff;
+      font-size: 0.92rem;
+    }
+
+    .passed-check-icon {
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    /* -------------------------------------------------------------
+       6. Footer
+       ------------------------------------------------------------- */
+    .report-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px 0 12px;
+      margin-top: 10px;
+    }
+
+    .footer-line {
+      flex: 1;
+      height: 1px;
+      background: var(--blue);
+      opacity: 0.55;
+    }
+
+    .footer-text {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* -------------------------------------------------------------
+       Responsive Design (Under 800px)
+       ------------------------------------------------------------- */
+    @media (max-width: 800px) {
+      body {
+        padding: 20px 14px;
+      }
+
+      .header-line {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .circuit-art {
+        display: none;
+      }
+
+      .hero-content {
+        gap: 20px;
+      }
+
+      .hero-divider {
+        display: none;
+      }
+
+      .severity-tiles-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .finding-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .finding-fix-box {
+        width: 100%;
+        max-width: 100%;
+        margin-top: 6px;
+      }
+
+      .passed-checks-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* -------------------------------------------------------------
+       Print Styles (No Glow or Animations)
+       ------------------------------------------------------------- */
+    @media print {
+      body {
+        background: #02060d !important;
+        color: #e6edf3 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 10mm;
+      }
+
+      * {
+        animation: none !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        filter: none !important;
+      }
+
+      .hero-container,
+      .finding-row,
+      .severity-tile,
+      .passed-check-item,
+      .comparison-panel {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .circuit-art {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+
+    <!-- 1. Header line, no box: "> scanning <target_url>" -->
+    <header class="header-line">
+      <div class="header-left">
+        <span class="header-prompt">&gt; scanning</span>
+        <span class="header-url">{{ target_url }}</span>
+      </div>
+      <div class="header-right">
+        <!-- Calendar inline SVG -->
+        <svg class="calendar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>{{ scan_time }}</span>
+      </div>
+    </header>
+
+    {% if metadata %}
+      <section class="scan-metadata" aria-label="Scan metadata">
+        {% if metadata.scan_id %}<div><strong>Scan ID:</strong> {{ metadata.scan_id }}</div>{% endif %}
+        {% if metadata.scanner_version %}<div><strong>Scanner version:</strong> {{ metadata.scanner_version }}</div>{% endif %}
+        {% if metadata.scan_mode_label or metadata.scan_mode %}<div><strong>Scan mode:</strong> {{ metadata.scan_mode_label or metadata.scan_mode }}</div>{% endif %}
+        {% if metadata.target_ip %}<div><strong>Resolved IP:</strong> {{ metadata.target_ip }}</div>{% endif %}
+        {% if metadata.dns_outcome %}<div><strong>DNS outcome:</strong> {{ metadata.dns_outcome }}</div>{% endif %}
+        {% if metadata.connection_outcome %}<div><strong>Connection outcome:</strong> {{ metadata.connection_outcome }}</div>{% endif %}
+        {% if metadata.http_outcome %}<div><strong>HTTP(S) outcome:</strong> {{ metadata.http_outcome }}</div>{% endif %}
+        {% if metadata.scan_started_at %}<div><strong>Started:</strong> {{ metadata.scan_started_at }}</div>{% endif %}
+        {% if metadata.scan_completed_at %}<div><strong>Completed:</strong> {{ metadata.scan_completed_at }}</div>{% endif %}
+        {% if metadata.duration_seconds is defined and metadata.duration_seconds is not none %}<div><strong>Duration:</strong> {{ metadata.duration_seconds }}s</div>{% endif %}
+        {% if metadata.status %}<div><strong>Scan status:</strong> {{ metadata.status }}</div>{% endif %}
+      </section>
+    {% endif %}
+
+    {% if observations %}
+      <section class="scan-metadata" aria-label="Scan observations">
+        {% if observations.tls_observations and observations.tls_observations.applicable %}
+          <div><strong>TLS status:</strong> {{ observations.tls_observations.status }}</div>
+          {% if observations.tls_observations.protocol %}<div><strong>TLS protocol:</strong> {{ observations.tls_observations.protocol }}</div>{% endif %}
+          {% if observations.tls_observations.certificate %}
+            <div><strong>TLS cert subject:</strong> {{ observations.tls_observations.certificate.subject.get('commonName') or observations.tls_observations.certificate.subject }}</div>
+            <div><strong>TLS cert issuer:</strong> {{ observations.tls_observations.certificate.issuer.get('commonName') or observations.tls_observations.certificate.issuer }}</div>
+            <div><strong>TLS validity:</strong> {{ observations.tls_observations.certificate.notBefore or 'unknown' }} to {{ observations.tls_observations.certificate.notAfter or 'unknown' }}</div>
+          {% endif %}
+          {% if observations.tls_observations.hostname_match is defined and observations.tls_observations.hostname_match is not none %}<div><strong>Hostname/SAN match:</strong> {{ 'yes' if observations.tls_observations.hostname_match else 'no' }}</div>{% endif %}
+          {% if observations.tls_observations.verification_ok is defined and observations.tls_observations.verification_ok is not none %}<div><strong>Certificate verification:</strong> {{ 'passed' if observations.tls_observations.verification_ok else 'failed' }}</div>{% endif %}
+          {% if observations.tls_observations.error %}<div><strong>TLS error:</strong> {{ observations.tls_observations.error }}</div>{% endif %}
+        {% elif observations.tls_observations and not observations.tls_observations.applicable %}
+          <div><strong>TLS:</strong> {{ observations.tls_observations.note or 'Not applicable' }}</div>
+        {% endif %}
+        {% if observations.waf_indicators %}
+          {% for w in observations.waf_indicators %}
+            <div><strong>CDN/WAF/challenge:</strong> {{ w.provider or 'intermediary' }} ({{ w.confidence or 'suspected' }}, HTTP {{ w.status or 'n/a' }}){% if w.indicators %} - {{ w.indicators|join('; ') }}{% endif %}</div>
+          {% endfor %}
+        {% endif %}
+        {% if observations.rate_limit_events %}
+          {% for r in observations.rate_limit_events %}
+            <div><strong>Rate limit:</strong> HTTP 429 at {{ r.url or 'target' }}{% if r.retry_after and r.retry_after.seconds is not none %} (Retry-After ~{{ r.retry_after.seconds }}s){% elif r.retry_after and r.retry_after.raw %} (Retry-After: {{ r.retry_after.raw }}){% endif %}</div>
+          {% endfor %}
+          <div><strong>Rate-limit handling:</strong> Requests stopped conservatively (no retries, no bypass).</div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <!-- 2. Hero row on near-black background with circuit-board line art -->
+    <section class="hero-container">
+      <!-- Circuit-board line art (far left) -->
+      <svg class="circuit-art circuit-left" width="150" height="110" viewBox="0 0 150 110" fill="none" aria-hidden="true">
+        <path d="M 0 20 H 50 L 75 45 H 120" stroke="#19d3ff" stroke-width="1.5" stroke-opacity="0.25"/>
+        <circle cx="120" cy="45" r="3" fill="#19d3ff" fill-opacity="0.45"/>
+        <path d="M 0 65 H 35 L 60 90 H 100 L 115 75 H 135" stroke="#1e90ff" stroke-width="1.5" stroke-opacity="0.22"/>
+        <circle cx="135" cy="75" r="2.5" fill="#1e90ff" fill-opacity="0.4"/>
+        <path d="M 15 105 H 55 L 70 90" stroke="#19d3ff" stroke-width="1.2" stroke-opacity="0.18"/>
+        <circle cx="15" cy="105" r="2.5" fill="#19d3ff" fill-opacity="0.3"/>
+      </svg>
+
+      <!-- Central Hero Content -->
+      <div class="hero-content">
+        <!-- a) Large Padlock (inline SVG) with glow -->
+        <div class="hero-padlock-wrapper">
+          {% if padlock_state == 'open' %}
+            <!-- Open Red Padlock (Grade D/E/F) -->
+            <svg class="hero-padlock padlock-red padlock-pulse-red" width="60" height="72" viewBox="0 0 24 28" fill="none" aria-label="Security Status: Open Lock">
+              <path d="M7 11V6C7 3.23858 9.23858 1 12 1C14.7614 1 17 3.23858 17 6V7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              <rect x="3" y="11" width="18" height="14" rx="2.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="2.5"/>
+              <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+              <path d="M12 18.5V21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          {% elif grade == 'C' %}
+            <!-- Closed Orange Padlock (Grade C) -->
+            <svg class="hero-padlock padlock-orange" width="60" height="72" viewBox="0 0 24 28" fill="none" aria-label="Security Status: Moderate Warning">
+              <path d="M6 10V6.5C6 3.46243 8.68629 1 12 1C15.3137 1 18 3.46243 18 6.5V10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              <rect x="3" y="10" width="18" height="15" rx="2.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="2.5"/>
+              <circle cx="12" cy="16.5" r="1.5" fill="currentColor"/>
+              <path d="M12 18V20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          {% else %}
+            <!-- Closed Green Padlock (Grade A/B) -->
+            <svg class="hero-padlock padlock-green" width="60" height="72" viewBox="0 0 24 28" fill="none" aria-label="Security Status: Secure">
+              <path d="M6 10V6.5C6 3.46243 8.68629 1 12 1C15.3137 1 18 3.46243 18 6.5V10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              <rect x="3" y="10" width="18" height="15" rx="2.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="2.5"/>
+              <circle cx="12" cy="16.5" r="1.5" fill="currentColor"/>
+              <path d="M12 18V20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          {% endif %}
+        </div>
+
+        <!-- b) Thin vertical cyan divider line -->
+        <div class="hero-divider"></div>
+
+        <!-- c) Grade Ring (letter A-F in circle) with coloured arc -->
+        <div class="grade-ring-wrapper">
+          <svg class="grade-ring-svg" width="110" height="110" viewBox="0 0 110 110" aria-label="Grade {{ grade }}">
+            <circle class="grade-ring-track" cx="55" cy="55" r="46"/>
+            <circle class="grade-ring-arc" cx="55" cy="55" r="46"
+                    stroke-dasharray="289.026"
+                    stroke-dashoffset="{{ dashoffset if dashoffset is defined else (289.026 - ((score / 100.0) * 289.026)) }}"/>
+          </svg>
+          <div class="grade-ring-letter">{{ grade }}</div>
+        </div>
+
+        <!-- d) Big score number and hero findings text -->
+        <div class="hero-score-meta">
+          <div class="hero-score-line">
+            <span class="hero-score-num">{{ score }}</span><span class="hero-score-denom"> / 100</span>
+          </div>
+          <div class="hero-findings-subtitle">{{ hero_findings_text }}</div>
+        </div>
+      </div>
+
+      <!-- Circuit-board line art (far right) -->
+      <svg class="circuit-art circuit-right" width="150" height="110" viewBox="0 0 150 110" fill="none" aria-hidden="true">
+        <path d="M 150 20 H 100 L 75 45 H 30" stroke="#19d3ff" stroke-width="1.5" stroke-opacity="0.25"/>
+        <circle cx="30" cy="45" r="3" fill="#19d3ff" fill-opacity="0.45"/>
+        <path d="M 150 65 H 115 L 90 90 H 50 L 35 75 H 15" stroke="#1e90ff" stroke-width="1.5" stroke-opacity="0.22"/>
+        <circle cx="15" cy="75" r="2.5" fill="#1e90ff" fill-opacity="0.4"/>
+        <path d="M 135 105 H 95 L 80 90" stroke="#19d3ff" stroke-width="1.2" stroke-opacity="0.18"/>
+        <circle cx="135" cy="105" r="2.5" fill="#19d3ff" fill-opacity="0.3"/>
+      </svg>
+    </section>
+
+    {% if comparison %}
+      <!-- Optional: Changes Since Last Scan (Comparison Panel) -->
+      <section class="comparison-panel" aria-label="Changes Since Last Scan">
+        <div class="comparison-header">
+          <div class="comparison-title">&gt; Changes since last scan</div>
+          <div class="comparison-score-delta">
+            Score: {{ comparison.prev_score }} &rarr; <strong>{{ score }}</strong>
+            {% if comparison.score_delta >= 0 %}
+              <span class="delta-pos">(+{{ comparison.score_delta }} pts)</span>
+            {% else %}
+              <span class="delta-neg">({{ comparison.score_delta }} pts)</span>
+            {% endif %}
+            | Grade: {{ comparison.prev_grade }} &rarr; <strong>{{ grade }}</strong>
+          </div>
+        </div>
+
+        <div class="comparison-stats-row">
+          <span class="comp-stat-badge comp-fixed">&#x2714; {{ comparison.counts.fixed }} Fixed</span>
+          <span class="comp-stat-badge comp-open">&#x25CF; {{ comparison.counts.still_open }} Still Open</span>
+          <span class="comp-stat-badge comp-new">&#x25B2; {{ comparison.counts.new }} New</span>
+        </div>
+
+        {% if comparison.fixed %}
+          <div class="comparison-fixed-list">
+            <strong>Resolved Misconfigurations:</strong>
+            {% for fix in comparison.fixed %}
+              <div><span class="fixed-item">[FIXED]</span> {{ fix.title }} ({{ fix.id }})</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <!-- 3. Four Severity Tiles (Critical, High, Medium, Low) -->
+    <section class="severity-tiles-grid" aria-label="Severity Counts Summary">
+      <!-- Critical Tile -->
+      <div class="severity-tile severity-tile-critical">
+        <div class="tile-left">
+          <span class="tile-number">{{ counts.critical }}</span>
+          <span class="tile-word">Critical</span>
+        </div>
+        <div class="tile-right">
+          <svg class="tile-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- High Tile -->
+      <div class="severity-tile severity-tile-high">
+        <div class="tile-left">
+          <span class="tile-number">{{ counts.high }}</span>
+          <span class="tile-word">High</span>
+        </div>
+        <div class="tile-right">
+          <svg class="tile-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Medium Tile -->
+      <div class="severity-tile severity-tile-medium">
+        <div class="tile-left">
+          <span class="tile-number">{{ counts.medium }}</span>
+          <span class="tile-word">Medium</span>
+        </div>
+        <div class="tile-right">
+          <svg class="tile-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Low Tile -->
+      <div class="severity-tile severity-tile-low">
+        <div class="tile-left">
+          <span class="tile-number">{{ counts.low }}</span>
+          <span class="tile-word">Low</span>
+        </div>
+        <div class="tile-right">
+          <svg class="tile-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Info Tile -->
+      <div class="severity-tile severity-tile-info">
+        <div class="tile-left">
+          <span class="tile-number">{{ counts.info }}</span>
+          <span class="tile-word">Informational</span>
+        </div>
+        <div class="tile-right">
+          <svg class="tile-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Section Heading "Findings" -->
+    <h2 class="section-heading">Findings</h2>
+
+    {% if findings|length == 0 %}
+      <!-- Empty findings state: Green closed padlock and message -->
+      <div class="no-findings-panel">
+        <svg width="24" height="28" viewBox="0 0 24 26" fill="none" stroke="currentColor">
+          <path d="M6 10V6C6 3 8.5 1 12 1C15.5 1 18 3 18 6V10" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="3" y="10" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.25" stroke-width="2.5"/>
+          <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
+          <path d="M12 17.5V19.5" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>No security misconfigurations detected.</span>
+      </div>
+    {% else %}
+      <!-- Findings List: One ROW per finding -->
+      <div class="findings-container">
+        {% for f in findings %}
+          {% set sev_lower = f.severity|lower %}
+          <div class="finding-row finding-{{ sev_lower }}" data-id="{{ f.id }}">
+            <!-- Warning-triangle icon -->
+            <div class="finding-icon-wrap">
+              <svg class="finding-icon-{{ sev_lower }}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+
+            <!-- Filled severity badge + Outlined confidence tag -->
+            <div class="badges-col">
+              <span class="severity-badge badge-{{ sev_lower }}">{{ "Informational" if sev_lower == "info" else f.severity }}</span>
+              {% if f.confidence %}
+                <span class="confidence-badge confidence-{{ f.confidence|lower }}">{{ f.confidence }}</span>
+              {% endif %}
+            </div>
+
+            <!-- Finding details, evidence, and affected component -->
+            <div class="finding-main-info">
+              <div class="finding-title-line">
+                <span>{{ f.title }}</span>
+                <span class="category-divider">|</span>
+                <span class="finding-category">{{ f.category }}</span>
+              </div>
+              <div class="finding-description">
+                <span class="evidence-label">Description:</span>{{ f.description }}
+              </div>
+              <div class="finding-impact">
+                <span class="evidence-label">Security impact:</span>{{ f.impact }}
+              </div>
+              <div class="finding-evidence">
+                <span class="evidence-label">Evidence / observed configuration:</span>{{ f.evidence }}
+              </div>
+              {% if f.url %}
+                <div class="finding-url-line">
+                  <span class="url-prefix">Affected URL / component:</span>{{ f.url }}
+                </div>
+              {% else %}
+                <div class="finding-url-line">
+                  <span class="url-prefix">Affected component:</span>{{ f.category }}
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Fix box on the right (~34% width) -->
+            <div class="finding-fix-box">
+              <svg class="fix-padlock-icon" width="14" height="16" viewBox="0 0 24 26" fill="none" stroke="currentColor">
+                <path d="M6 10V6C6 3 8.5 1 12 1C15.5 1 18 3 18 6V10" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="3" y="10" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.25" stroke-width="2.5"/>
+                <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
+                <path d="M12 17.5V19.5" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <div class="fix-text"><span class="fix-prefix">Recommended remediation:</span>{{ f.fix }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- 5. Section Heading "Passed checks" (Hidden if empty or None) -->
+    {% if passed_checks and passed_checks|length > 0 %}
+      <section class="passed-checks-section">
+        <h2 class="section-heading section-heading-cyan">Passed checks</h2>
+        <div class="passed-checks-grid">
+          {% for check in passed_checks %}
+            <div class="passed-check-item">
+              <svg class="passed-check-icon" width="15" height="17" viewBox="0 0 24 26" fill="none" stroke="currentColor">
+                <path d="M6 10V6C6 3 8.5 1 12 1C15.5 1 18 3 18 6V10" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="3" y="10" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.25" stroke-width="2.5"/>
+                <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
+                <path d="M12 17.5V19.5" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>{{ check }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if check_results and check_results|length > 0 %}
+      <section class="passed-checks-section" aria-label="Per-check results">
+        <h2 class="section-heading section-heading-cyan">Per-check results</h2>
+        <div class="passed-checks-grid">
+          {% for check in check_results %}
+            <div class="passed-check-item">
+              <svg class="passed-check-icon" width="15" height="17" viewBox="0 0 24 26" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M6 10V6C6 3 8.5 1 12 1C15.5 1 18 3 18 6V10" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="3" y="10" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.15" stroke-width="2.5"/>
+                <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
+                <path d="M12 17.5V19.5" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>
+                <strong>{{ check.name if check.name is defined else check }}</strong>
+                {% if check.status is defined %} &mdash; <strong>{{ check.status }}</strong>{% endif %}
+                {% if check.severity is defined and check.severity %} ({{ check.severity }}){% endif %}
+                {% if check.affected_url is defined and check.affected_url %}<br><small>Endpoint: {{ check.affected_url }}</small>{% endif %}
+                {% if check.explanation is defined and check.explanation %}<br><small>{{ check.explanation }}</small>{% endif %}
+                {% if check.evidence is defined and check.evidence %}<br><small>Evidence: {{ check.evidence }}</small>{% endif %}
+                {% if check.remediation is defined and check.remediation %}<br><small>Remediation: {{ check.remediation }}</small>{% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if checks_not_performed and checks_not_performed|length > 0 %}
+      <section class="passed-checks-section" aria-label="Checks not performed">
+        <h2 class="section-heading section-heading-cyan">Checks not performed</h2>
+        <div class="passed-checks-grid">
+          {% for check in checks_not_performed %}
+            <div class="passed-check-item">
+              <svg class="passed-check-icon" width="15" height="17" viewBox="0 0 24 26" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M6 10V6C6 3 8.5 1 12 1C15.5 1 18 3 18 6V10" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="3" y="10" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.15" stroke-width="2.5"/>
+                <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
+                <path d="M12 17.5V19.5" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>
+                <strong>{{ check.name if check.name is defined else check }}</strong>
+                {% if check.explanation is defined and check.explanation %}: {{ check.explanation }}{% endif %}
+                {% if check.evidence is defined and check.evidence %} ({{ check.evidence }}){% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if scan_limitations and scan_limitations|length > 0 %}
+      <section class="passed-checks-section" aria-label="Scan limitations">
+        <h2 class="section-heading section-heading-cyan">Scan limitations</h2>
+        <div class="passed-checks-grid">
+          {% for limitation in scan_limitations %}
+            <div class="passed-check-item">
+              <svg class="passed-check-icon" width="15" height="17" viewBox="0 0 24 26" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M6 10V6C6 3 8.5 1 12 1C15.5 1 18 3 18 6V10" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="3" y="10" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.15" stroke-width="2.5"/>
+                <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
+                <path d="M12 17.5V19.5" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>{{ limitation }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    <!-- 6. Footer: "Authorized testing only" centred with horizontal lines -->
+    <footer class="report-footer">
+      <div class="footer-line"></div>
+      <div class="footer-text">Authorized testing only</div>
+      <div class="footer-line"></div>
+    </footer>
+
+  </div>
+</body>
+</html>

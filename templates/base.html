@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08090D">
+  <title>{% block title %}CONFIGRA | Automated Security Misconfiguration Detector{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/cyber_soc.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    <aside class="soc-sidebar" aria-label="Main navigation">
+      <a href="{{ url_for('scanner_page') }}" class="sidebar-brand" title="CONFIGRA home" aria-label="CONFIGRA home">
+        <svg class="configra-mark sidebar-mark" viewBox="0 0 48 52" role="img" aria-label="CONFIGRA shield and server logo">
+          <path class="logo-shield" d="M24 3 6 10v13c0 12 7.4 21.3 18 26 10.6-4.7 18-14 18-26V10L24 3Z"/>
+          <rect class="logo-server" x="15" y="15" width="18" height="22" rx="2"/>
+          <path class="logo-server-line" d="M18 21h12M18 27h12M18 33h7"/>
+          <circle class="logo-signal" cx="29" cy="33" r="1.5"/>
+        </svg>
+      </a>
+
+      <div class="sidebar-avatar-wrap" title="Operator profile" aria-label="Operator profile">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Primary">
+        <a href="{{ url_for('scanner_page') }}"
+           class="nav-item {% if active_page == 'scanner' %}active{% endif %}"
+           title="Home — Scanner" aria-label="Home — Scanner">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>
+          </svg>
+        </a>
+        <a href="{% if scan_id %}{{ url_for('results_page', scan_id=scan_id) }}{% else %}{{ url_for('results_redirect') }}{% endif %}"
+           class="nav-item {% if active_page == 'dashboard' %}active{% endif %}"
+           title="Security results" aria-label="Security results">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </a>
+      </nav>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <a class="header-brand" href="{{ url_for('scanner_page') }}" aria-label="CONFIGRA home">
+          <svg class="configra-mark header-mark" viewBox="0 0 48 52" aria-hidden="true">
+            <path class="logo-shield" d="M24 3 6 10v13c0 12 7.4 21.3 18 26 10.6-4.7 18-14 18-26V10L24 3Z"/>
+            <rect class="logo-server" x="15" y="15" width="18" height="22" rx="2"/>
+            <path class="logo-server-line" d="M18 21h12M18 27h12M18 33h7"/>
+            <circle class="logo-signal" cx="29" cy="33" r="1.5"/>
+          </svg>
+          <span class="header-brand-copy">
+            <span class="header-wordmark">CONFIGRA</span>
+            <span class="header-tagline">DETECT. ANALYZE. STRENGTHEN.</span>
+          </span>
+        </a>
+        <div class="header-scope-badge">
+          <span class="status-dot-pulse" aria-hidden="true"></span>
+          Authorized testing scope
+        </div>
+      </header>
+
+      <main class="page-content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>
